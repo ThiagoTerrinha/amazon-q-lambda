@@ -1,0 +1,8 @@
+{
+  "Comment": "Evento de teste para Lambda JavaScript",
+  "url": "https://example.com",
+  "additionalOptions": {
+    "format": "A4",
+    "orientation": "portrait"
+  }
+}

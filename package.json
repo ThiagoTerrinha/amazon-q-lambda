@@ -1,0 +1,34 @@
+{
+  "name": "amazon-q-pdf-lambda",
+  "version": "1.0.0",
+  "description": "Lambda function que converte sites em PDF usando Amazon Q CLI",
+  "main": "index.js",
+  "scripts": {
+    "test": "jest",
+    "build": "npm install",
+    "deploy": "sam deploy",
+    "local": "sam local start-api",
+    "invoke": "sam local invoke PdfGeneratorFunction --event event.json"
+  },
+  "dependencies": {
+    "aws-sdk": "^2.1490.0",
+    "puppeteer-core": "^21.5.2",
+    "chromium": "^3.0.3",
+    "@aws-sdk/client-bedrock-runtime": "^3.445.0",
+    "axios": "^1.6.0"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "@types/jest": "^29.5.8",
+    "aws-lambda-mock-context": "^3.2.1"
+  },
+  "keywords": [
+    "aws",
+    "lambda",
+    "pdf",
+    "amazon-q",
+    "serverless"
+  ],
+  "author": "ThiagoTerrinha",
+  "license": "MIT"
+}

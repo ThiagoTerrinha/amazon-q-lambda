@@ -1,0 +1,141 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Lambda function JavaScript que converte sites em PDF usando Amazon Q CLI
+
+Globals:
+  Function:
+    Timeout: 60
+    MemorySize: 1024
+    Runtime: nodejs18.x
+
+Parameters:
+  Environment:
+    Type: String
+    Description: Ambiente de deployment
+    Default: dev
+    AllowedValues: [dev, staging, prod]
+
+Resources:
+  PdfGeneratorFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub 'pdf-generator-js-${Environment}'
+      CodeUri: .
+      Handler: index.handler
+      Environment:
+        Variables:
+          NODE_ENV: !Ref Environment
+          AWS_REGION: !Ref AWS::Region
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - 'bedrock:InvokeModel'
+                - 'bedrock:InvokeModelWithResponseStream'
+              Resource: '*'
+            - Effect: Allow
+              Action:
+                - 'logs:CreateLogGroup'
+                - 'logs:CreateLogStream'
+                - 'logs:PutLogEvents'
+              Resource: '*'
+      Events:
+        GeneratePdfApi:
+          Type: Api
+          Properties:
+            Path: /generate-pdf
+            Method: post
+            RestApiId: !Ref PdfGeneratorApi
+        GeneratePdfOptions:
+          Type: Api
+          Properties:
+            Path: /generate-pdf
+            Method: options
+            RestApiId: !Ref PdfGeneratorApi
+
+  PdfGeneratorApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: !Ref Environment
+      Cors:
+        AllowMethods: "'POST,OPTIONS'"
+        AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+        AllowOrigin: "'*'"
+      DefinitionBody:
+        openapi: 3.0.1
+        info:
+          title: PDF Generator API
+          version: 1.0.0
+        paths:
+          /generate-pdf:
+            post:
+              summary: Converte site em PDF
+              requestBody:
+                required: true
+                content:
+                  application/json:
+                    schema:
+                      type: object
+                      properties:
+                        url:
+                          type: string
+                          description: URL do site para converter
+                          example: "https://example.com"
+                      required:
+                        - url
+              responses:
+                '200':
+                  description: PDF gerado com sucesso
+                  content:
+                    application/json:
+                      schema:
+                        type: object
+                        properties:
+                          success:
+                            type: boolean
+                          url:
+                            type: string
+                          pdfBase64:
+                            type: string
+                          qInsights:
+                            type: object
+                '400':
+                  description: Erro de validação
+                '500':
+                  description: Erro interno
+            options:
+              summary: CORS preflight
+              responses:
+                '200':
+                  description: CORS headers
+              x-amazon-apigateway-integration:
+                type: mock
+                requestTemplates:
+                  application/json: '{"statusCode": 200}'
+                responses:
+                  default:
+                    statusCode: 200
+                    responseParameters:
+                      method.response.header.Access-Control-Allow-Origin: "'*'"
+                      method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+                      method.response.header.Access-Control-Allow-Methods: "'POST,OPTIONS'"
+
+  PdfGeneratorLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/pdf-generator-js-${Environment}'
+      RetentionInDays: 30
+
+Outputs:
+  PdfGeneratorApiUrl:
+    Description: "URL da API Gateway"
+    Value: !Sub "https://${PdfGeneratorApi}.execute-api.${AWS::Region}.amazonaws.com/${Environment}/generate-pdf"
+    Export:
+      Name: !Sub "${AWS::StackName}-ApiUrl"
+  
+  PdfGeneratorFunctionArn:
+    Description: "ARN da Lambda Function"
+    Value: !GetAtt PdfGeneratorFunction.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-FunctionArn"
